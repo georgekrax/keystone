@@ -3,6 +3,7 @@ runs:
   using: 'composite'
   steps:
     - run: corepack enable
+      shell: bash
     - name: Setup Node.js LTS
       uses: actions/setup-node@v3
       with:
