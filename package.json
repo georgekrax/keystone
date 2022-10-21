@@ -69,24 +69,6 @@
       }
     ]
   },
-  "workspaces": {
-    "packages": [
-      "design-system/packages/*",
-      "design-system/website",
-      "docs",
-      "examples/*",
-      "examples/*/*",
-      "packages/*",
-      "tests/admin-ui-tests",
-      "tests/api-tests",
-      "tests/benchmarks",
-      "tests/examples-smoke-tests",
-      "tests/test-projects/*",
-      "tests/sandbox",
-      "prisma-utils",
-      "scripts/*"
-    ]
-  },
   "preconstruct": {
     "packages": [
       "packages/*",
