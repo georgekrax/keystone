@@ -8,7 +8,7 @@ import fs from 'fs-extra';
 import chalk from 'chalk';
 import esbuild, { BuildFailure, BuildResult } from 'esbuild';
 import { generateAdminUI } from '../../admin-ui/system';
-import { devMigrations, pushPrismaSchemaToDatabase } from '../../lib/migrations';
+import { pushPrismaSchemaToDatabase } from '../../lib/migrations';
 import { createSystem } from '../../lib/createSystem';
 import { getEsbuildConfig, loadBuiltConfig } from '../../lib/config/loadConfig';
 import { defaults } from '../../lib/config/defaults';
@@ -66,7 +66,7 @@ export function setSkipWatching() {
   shouldWatch = false;
 }
 
-export const dev = async (cwd: string, shouldDropDatabase: boolean) => {
+export const dev = async (cwd: string, shouldDropDatabase: boolean, pushDb: boolean) => {
   console.log('✨ Starting Keystone');
 
   const app = express();
@@ -123,7 +123,7 @@ export const dev = async (cwd: string, shouldDropDatabase: boolean) => {
       apolloServer,
       prismaClientModule,
       ...rest
-    } = await setupInitialKeystone(config, cwd, shouldDropDatabase);
+    } = await setupInitialKeystone(config, cwd, shouldDropDatabase, pushDb);
 
     if (configWithHTTP?.server?.extendHttpServer) {
       const createRequestContext = async (req: IncomingMessage, res: ServerResponse) =>
@@ -179,8 +179,7 @@ export const dev = async (cwd: string, shouldDropDatabase: boolean) => {
         // and aren't written into the prisma schema since we check whether the prisma schema has changed above
         if (
           newConfig.db.enableLogging !== config.db.enableLogging ||
-          newConfig.db.url !== config.db.url ||
-          newConfig.db.useMigrations !== config.db.useMigrations
+          newConfig.db.url !== config.db.url
         ) {
           console.log('Your db config has changed, please restart Keystone');
           process.exit(1);
@@ -338,7 +337,8 @@ export const dev = async (cwd: string, shouldDropDatabase: boolean) => {
 async function setupInitialKeystone(
   config: KeystoneConfig,
   cwd: string,
-  shouldDropDatabase: boolean
+  shouldDropDatabase: boolean,
+  pushDb: boolean
 ) {
   const { graphQLSchema, adminMeta, getKeystone } = createSystem(config);
 
@@ -351,15 +351,7 @@ async function setupInitialKeystone(
   let migrationPromise: Promise<void>;
 
   // Set up the Database
-  if (config.db.useMigrations) {
-    migrationPromise = devMigrations(
-      config.db.url,
-      config.db.shadowDatabaseUrl,
-      prismaSchema,
-      getSchemaPaths(cwd).prisma,
-      shouldDropDatabase
-    );
-  } else {
+  if (pushDb) {
     migrationPromise = pushPrismaSchemaToDatabase(
       config.db.url,
       config.db.shadowDatabaseUrl,
@@ -367,6 +359,11 @@ async function setupInitialKeystone(
       getSchemaPaths(cwd).prisma,
       shouldDropDatabase
     );
+  } else {
+    const skipDBPush = async () => {
+      console.log('⚠️ Skipping database schema push');
+    };
+    migrationPromise = skipDBPush();
   }
 
   await Promise.all([prismaClientGenerationPromise, migrationPromise]);
